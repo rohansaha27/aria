@@ -15,7 +15,7 @@ export async function transcribeAudio(
         data: audioBytes.toString("base64"),
       },
     },
-    "Transcribe this audio exactly. Return only the spoken words, no labels or timestamps.",
+    "Transcribe this audio verbatim. Keep the exact words spoken and punctuation only when clearly audible. Do not paraphrase, normalize, or substitute words (for example morning/evening). If a word is unclear, output [unclear]. Return only the transcript text with no labels or timestamps.",
   ]);
 
   return result.response.text().trim();

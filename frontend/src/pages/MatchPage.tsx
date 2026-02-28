@@ -8,7 +8,7 @@ const SPIKE_RADIUS = 25.5;
 const FFT_SIZE = 256;
 const SPIKES_MAX_LENGTH = 8;
 
-type Ethnicity = 'Indian' | 'British' | 'Australian' | 'American';
+type Ethnicity = 'Indian' | 'British' | 'Australian' | 'American' | 'Irish';
 type Emotion = 'happy' | 'angry' | 'sad';
 
 const PERSONAS: Array<{
@@ -18,15 +18,16 @@ const PERSONAS: Array<{
   color: string;
   defaultAge: number;
   defaultEthnicity: Ethnicity;
+  availableEthnicities: readonly Ethnicity[];
   defaultEmotion: Emotion;
 }> = [
-  { id: 'calm_narrator',     name: 'Calm Narrator',     description: 'Calm · Middle-aged · Neutral accent', color: '#3949ab', defaultAge: 42, defaultEthnicity: 'American', defaultEmotion: 'happy' },
-  { id: 'radio_host',        name: 'Radio Host',        description: 'Energetic · Young · Broadcast',       color: '#e53935', defaultAge: 28, defaultEthnicity: 'American', defaultEmotion: 'happy' },
-  { id: 'elder_storyteller', name: 'Elder Storyteller', description: 'Warm · Elderly · Storytelling',       color: '#8e24aa', defaultAge: 68, defaultEthnicity: 'British',  defaultEmotion: 'happy' },
-  { id: 'playful_kid',       name: 'Playful Kid',       description: 'Bright · Youthful · Playful energy', color: '#00897b', defaultAge: 10, defaultEthnicity: 'American', defaultEmotion: 'happy' },
+  { id: 'calm_narrator',     name: 'Calm Narrator',     description: 'Calm · Middle-aged · Neutral accent', color: '#3949ab', defaultAge: 42, defaultEthnicity: 'American', availableEthnicities: ['American', 'British', 'Australian'], defaultEmotion: 'happy' },
+  { id: 'radio_host',        name: 'Radio Host',        description: 'Energetic · Young · Broadcast',       color: '#e53935', defaultAge: 28, defaultEthnicity: 'American', availableEthnicities: ['American', 'Indian', 'British', 'Australian'], defaultEmotion: 'happy' },
+  { id: 'elder_storyteller', name: 'Elder Storyteller', description: 'Warm · Elderly · Storytelling',       color: '#8e24aa', defaultAge: 68, defaultEthnicity: 'British',  availableEthnicities: ['American', 'British', 'Irish'], defaultEmotion: 'happy' },
+  { id: 'playful_kid',       name: 'Playful Kid',       description: 'Bright · Youthful · Playful energy', color: '#00897b', defaultAge: 10, defaultEthnicity: 'American', availableEthnicities: ['American', 'British', 'Australian'], defaultEmotion: 'happy' },
 ];
 
-const ETHNICITIES: readonly Ethnicity[] = ['Indian', 'British', 'Australian', 'American'];
+const ETHNICITIES: readonly Ethnicity[] = ['American', 'Indian', 'British', 'Australian', 'Irish'];
 const EMOTIONS: readonly Emotion[] = ['happy', 'angry', 'sad'];
 const AGE_MIN = 5;
 const AGE_MAX = 50;
@@ -86,7 +87,6 @@ export default function MatchPage() {
   const [error,          setError]          = useState<string | null>(null);
 
   const selectedPersona    = PERSONAS[personaIndex];
-  const showRadioAccent    = selectedPersona.id === 'radio_host';
   const personaColorRef    = useRef(PERSONAS[0].color);
 
   // Keep color ref in sync for animation loop reads.
@@ -279,13 +279,13 @@ export default function MatchPage() {
   const submitRecording = useCallback(async (
     audioBlob: Blob,
     personaId: string,
-    ethnicityValue: (typeof ETHNICITIES)[number],
+    ethnicityValue: Ethnicity,
     transcriptOverride?: string
   ) => {
     const form = new FormData();
     form.append('audio', audioBlob, 'recording.webm');
     form.append('personaId', personaId);
-    const accentValue = personaId === 'radio_host' ? ethnicityValue.toLowerCase() : 'american';
+    const accentValue = ethnicityValue.toLowerCase();
     form.append('accent', accentValue);
     if (transcriptOverride?.trim()) {
       form.append('transcript', transcriptOverride.trim());
@@ -342,8 +342,7 @@ export default function MatchPage() {
     if (!lastRecordingRef.current || !lastTranscriptRef.current) return;
     if (recordingState === 'recording' || recordingState === 'processing') return;
 
-    const accentForPersona = selectedPersona.id === 'radio_host' ? ethnicity : 'American';
-    const autoKey = `${selectedPersona.id}::${accentForPersona}`;
+    const autoKey = `${selectedPersona.id}::${ethnicity}`;
     if (lastAutoTransformKeyRef.current === autoKey) return;
     lastAutoTransformKeyRef.current = autoKey;
 
@@ -559,28 +558,22 @@ export default function MatchPage() {
             <label className="block text-[10px] font-medium tracking-[0.35em] text-white/40 uppercase">
               Accent
             </label>
-            {showRadioAccent ? (
-              <div className="flex flex-wrap gap-2">
-                {ETHNICITIES.map((opt) => (
-                  <button
-                    key={opt}
-                    type="button"
-                    onClick={() => setEthnicity(opt)}
-                    className={`px-3 py-1.5 rounded-full text-xs font-medium tracking-wider uppercase transition-all duration-200 ${
-                      ethnicity === opt
-                        ? 'bg-white/15 border border-white/25 text-white'
-                        : 'bg-white/5 border border-white/10 text-white/50 hover:text-white/70 hover:border-white/15'
-                    }`}
-                  >
-                    {opt}
-                  </button>
-                ))}
-              </div>
-            ) : (
-              <p className="text-xs text-white/45 tracking-wide">
-                Accent controls are available for Radio Host.
-              </p>
-            )}
+            <div className="flex flex-wrap gap-2">
+              {ETHNICITIES.filter((opt) => selectedPersona.availableEthnicities.includes(opt)).map((opt) => (
+                <button
+                  key={opt}
+                  type="button"
+                  onClick={() => setEthnicity(opt)}
+                  className={`px-3 py-1.5 rounded-full text-xs font-medium tracking-wider uppercase transition-all duration-200 ${
+                    ethnicity === opt
+                      ? 'bg-white/15 border border-white/25 text-white'
+                      : 'bg-white/5 border border-white/10 text-white/50 hover:text-white/70 hover:border-white/15'
+                  }`}
+                >
+                  {opt}
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* Emotion */}

@@ -23,7 +23,7 @@ export type FinalVoiceSettings = {
   speakingRate?: number;
 }
 
-export type AccentId = "american" | "british" | "australian" | "indian"
+export type AccentId = "american" | "british" | "australian" | "indian" | "irish"
 
 export const PERSONAS: Record<string, Persona> = {
   calm_narrator: {
@@ -34,6 +34,11 @@ export const PERSONAS: Record<string, Persona> = {
     stability: 0.80,
     similarityBoost: 0.75,
     style: 0.05,
+    accentVoices: {
+      american: "wLOfTh9wT8nrLnLqxfd5",
+      british: "FvyXayHJgEpLXj1kpe6D",
+      australian: "4tR1D78cmW4Foikz7fWt",
+    },
   },
   radio_host: {
     id: "radio_host",
@@ -45,7 +50,7 @@ export const PERSONAS: Record<string, Persona> = {
     style: 0.22,
     speakingRate: 1.03,
     accentVoices: {
-      american:   "OQZFQwxzrAUxV46LjHx1", // existing voice
+      american:   "TxGEqnHWrfWFTfGW9XjX", // Josh (stable US English fallback)
       british:    "Om2UWRzFN17pcwpGqlL7",
       australian: "gmBpaV0BNpfT1EqjI4Dx",
       indian:     "9yJ9vg0nUgNIvv7y2uhu",
@@ -60,6 +65,11 @@ export const PERSONAS: Record<string, Persona> = {
     similarityBoost: 0.70,
     style: 0.25,
     speakingRate: 0.85,
+    accentVoices: {
+      american: "aJGQwZByOI8Zm1HDZTqc",
+      british: "MHDEf7q6IT82FbcjH0nd",
+      irish: "4Uor0rDLAqv2qgcgUccG",
+    },
   },
   playful_kid: {
     id: "playful_kid",
@@ -70,5 +80,10 @@ export const PERSONAS: Record<string, Persona> = {
     similarityBoost: 0.70,
     style: 0.60,
     speakingRate: 1.10,
+    accentVoices: {
+      american: "7J89xXY66GnQ4VvinF4Q",
+      british: "3YQTLj3dqrcmATMBzizR",
+      australian: "ZNNBmwsTDeQikPOo9PQn",
+    },
   },
 };
