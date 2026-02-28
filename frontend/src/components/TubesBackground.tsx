@@ -11,12 +11,17 @@ export interface TubesBackgroundProps {
   children?: React.ReactNode;
   className?: string;
   enableClickInteraction?: boolean;
+  /** Called with current tube colors when they change (init or after click randomize). Use for UI that should match tube colour, e.g. button glow. */
+  onTubeColorsChange?: (tubeColors: string[]) => void;
 }
+
+const DEFAULT_TUBE_COLORS = ['#f967fb', '#53bc28', '#6958d5'];
 
 export function TubesBackground({
   children,
   className,
   enableClickInteraction = true,
+  onTubeColorsChange,
 }: TubesBackgroundProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [, setIsLoaded] = useState(false);
@@ -40,9 +45,10 @@ export function TubesBackground({
 
         if (!mounted) return;
 
+        const initialColors = [...DEFAULT_TUBE_COLORS];
         const app = TubesCursor(canvasRef.current, {
           tubes: {
-            colors: ['#f967fb', '#53bc28', '#6958d5'],
+            colors: initialColors,
             lights: {
               intensity: 200,
               colors: ['#83f36e', '#fe8a2e', '#ff008a', '#60aed5'],
@@ -52,6 +58,7 @@ export function TubesBackground({
 
         tubesRef.current = app;
         setIsLoaded(true);
+        onTubeColorsChange?.(initialColors);
 
         const handleResize = () => {
           // Library may handle resize; placeholder for custom logic
@@ -81,6 +88,7 @@ export function TubesBackground({
     const lightsColors = randomColors(4);
     tubesRef.current.tubes.setColors(colors);
     tubesRef.current.tubes.setLightsColors(lightsColors);
+    onTubeColorsChange?.(colors);
   };
 
   return (
