@@ -31,6 +31,7 @@ export async function POST(request: NextRequest) {
 
   const audioFile = formData.get("audio");
   const personaId = formData.get("personaId");
+  console.log("[transform] received personaId:", personaId);
 
   if (!audioFile || !(audioFile instanceof Blob)) {
     return NextResponse.json({ error: "Missing or invalid 'audio' field." }, { status: 400 });
