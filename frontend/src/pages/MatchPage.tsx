@@ -110,6 +110,14 @@ export default function MatchPage() {
     analyserRef.current      = analyser;
     frequencyDataRef.current = new Uint8Array(analyser.frequencyBinCount);
     timeDomainDataRef.current= new Uint8Array(analyser.fftSize);
+
+    // Create the MediaElementAudioSourceNode ONCE — Web Audio spec forbids calling
+    // createMediaElementSource more than once on the same element.
+    const elSrc = ctx.createMediaElementSource(audioRef.current!);
+    elSrc.connect(analyser);
+    analyser.connect(ctx.destination);
+    sourceRef.current = elSrc;
+
     audioContextRef.current  = ctx;
     return ctx;
   }, []);
@@ -248,14 +256,6 @@ export default function MatchPage() {
       const ctx = ensureAudioContext();
       if (ctx.state === 'suspended') ctx.resume();
 
-      // Create the element source node once — cannot be created twice for the same element
-      if (!sourceRef.current) {
-        const elSrc = ctx.createMediaElementSource(audio);
-        elSrc.connect(analyserRef.current!);
-        analyserRef.current!.connect(ctx.destination);
-        sourceRef.current = elSrc;
-      }
-
       setRecordingState('playing');
       setIsPlaying(true);
       audio.play().catch(console.error);
@@ -359,12 +359,6 @@ export default function MatchPage() {
     if (audio.paused) {
       const ctx = ensureAudioContext();
       if (ctx.state === 'suspended') ctx.resume();
-      if (!sourceRef.current) {
-        const src = ctx.createMediaElementSource(audio);
-        src.connect(analyserRef.current!);
-        analyserRef.current!.connect(ctx.destination);
-        sourceRef.current = src;
-      }
       audio.play().catch(console.error);
       setIsPlaying(true);
     } else {
