@@ -31,11 +31,10 @@ export async function POST(request: NextRequest) {
 
   const audioFile = formData.get("audio");
   const personaId = formData.get("personaId");
+  const transcriptRaw = formData.get("transcript");
+  const transcriptOverride =
+    typeof transcriptRaw === "string" && transcriptRaw.trim() !== "" ? transcriptRaw.trim() : undefined;
   console.log("[transform] received personaId:", personaId);
-
-  if (!audioFile || !(audioFile instanceof Blob)) {
-    return NextResponse.json({ error: "Missing or invalid 'audio' field." }, { status: 400 });
-  }
 
   if (typeof personaId !== "string" || !PERSONAS[personaId]) {
     return NextResponse.json(
@@ -51,6 +50,7 @@ export async function POST(request: NextRequest) {
   const accent = typeof accentRaw === "string" ? accentRaw as AccentId : "american";
   const voiceId =
     persona.accentVoices?.[accent] ?? persona.elevenVoiceId;
+  console.log("[transform] resolved voice:", { personaId, accent, voiceId });
 
   // Parse optional voice overrides
   const overrideStyle = parseOverrideField(formData, "style", 0, 1);
@@ -64,19 +64,26 @@ export async function POST(request: NextRequest) {
     speakingRate: overrideSpeakingRate ?? persona.speakingRate,
   };
 
-  // Strip codec params — Gemini only accepts bare MIME types (e.g. "audio/webm", not "audio/webm;codecs=opus")
-  const mimeType = (audioFile.type || "audio/webm").split(";")[0].trim();
-  const audioBuffer = Buffer.from(await audioFile.arrayBuffer());
-
-  console.log(`[transform] personaId=${personaId} mimeType=${mimeType} bytes=${audioBuffer.length}`);
-
   let transcript: string;
-  try {
-    transcript = await transcribeAudio(audioBuffer, mimeType);
-  } catch (err) {
-    console.error("[transform] Gemini transcription failed:", err);
-    // Never 500 — return a 200 with error field so the frontend can show a friendly message
-    return NextResponse.json({ error: "Transcription failed. Try speaking again." });
+  if (transcriptOverride) {
+    transcript = transcriptOverride;
+    console.log(`[transform] using transcript override="${transcript.slice(0, 80)}"`);
+  } else {
+    if (!audioFile || !(audioFile instanceof Blob)) {
+      return NextResponse.json({ error: "Missing or invalid 'audio' field." }, { status: 400 });
+    }
+    // Strip codec params — Gemini only accepts bare MIME types (e.g. "audio/webm", not "audio/webm;codecs=opus")
+    const mimeType = (audioFile.type || "audio/webm").split(";")[0].trim();
+    const audioBuffer = Buffer.from(await audioFile.arrayBuffer());
+
+    console.log(`[transform] personaId=${personaId} mimeType=${mimeType} bytes=${audioBuffer.length}`);
+    try {
+      transcript = await transcribeAudio(audioBuffer, mimeType);
+    } catch (err) {
+      console.error("[transform] Gemini transcription failed:", err);
+      // Never 500 — return a 200 with error field so the frontend can show a friendly message
+      return NextResponse.json({ error: "Transcription failed. Try speaking again." });
+    }
   }
 
   console.log(`[transform] transcript="${transcript.slice(0, 80)}"`);

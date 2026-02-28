@@ -40,10 +40,10 @@ export const PERSONAS: Record<string, Persona> = {
     name: "Radio Host",
     description: "Energetic and punchy, like a live FM broadcast.",
     elevenVoiceId: "OQZFQwxzrAUxV46LjHx1",
-    stability: 0.35,
-    similarityBoost: 0.75,
-    style: 0.45,
-    speakingRate: 1.15,
+    stability: 0.55,
+    similarityBoost: 0.8,
+    style: 0.22,
+    speakingRate: 1.03,
     accentVoices: {
       american:   "OQZFQwxzrAUxV46LjHx1", // existing voice
       british:    "Om2UWRzFN17pcwpGqlL7",

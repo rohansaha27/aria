@@ -66,6 +66,10 @@ export default function MatchPage() {
   const frequencyDataRef = useRef<Uint8Array | null>(null);
   const timeDomainDataRef= useRef<Uint8Array | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const submitAbortRef   = useRef<AbortController | null>(null);
+  const lastRecordingRef = useRef<Blob | null>(null);
+  const lastTranscriptRef = useRef<string | null>(null);
+  const lastAutoTransformKeyRef = useRef<string | null>(null);
   const chunksRef        = useRef<Blob[]>([]);
   const rafRef           = useRef<number>(0);
   const progressRef      = useRef(0);
@@ -82,6 +86,7 @@ export default function MatchPage() {
   const [error,          setError]          = useState<string | null>(null);
 
   const selectedPersona    = PERSONAS[personaIndex];
+  const showRadioAccent    = selectedPersona.id === 'radio_host';
   const personaColorRef    = useRef(PERSONAS[0].color);
 
   // Keep color ref in sync for animation loop reads.
@@ -98,6 +103,21 @@ export default function MatchPage() {
     setTranscript(null);
     setRecordingState('idle');
     setIsPlaying(false);
+    submitAbortRef.current?.abort();
+    submitAbortRef.current = null;
+
+    const recorder = mediaRecorderRef.current;
+    if (recorder && recorder.state !== 'inactive') recorder.stop();
+    mediaRecorderRef.current = null;
+    chunksRef.current = [];
+
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((t) => t.stop());
+      streamRef.current = null;
+    }
+    micSourceRef.current?.disconnect();
+    micSourceRef.current = null;
+
     if (audioRef.current) {
       audioRef.current.pause();
       audioRef.current.src = '';
@@ -256,19 +276,33 @@ export default function MatchPage() {
   }, []);
 
   // ── Submit recording to backend ───────────────────────────────────────────
-  const submitRecording = useCallback(async (audioBlob: Blob, personaId: string) => {
+  const submitRecording = useCallback(async (
+    audioBlob: Blob,
+    personaId: string,
+    ethnicityValue: (typeof ETHNICITIES)[number],
+    transcriptOverride?: string
+  ) => {
     const form = new FormData();
     form.append('audio', audioBlob, 'recording.webm');
     form.append('personaId', personaId);
+    const accentValue = personaId === 'radio_host' ? ethnicityValue.toLowerCase() : 'american';
+    form.append('accent', accentValue);
+    if (transcriptOverride?.trim()) {
+      form.append('transcript', transcriptOverride.trim());
+    }
+    submitAbortRef.current?.abort();
+    const controller = new AbortController();
+    submitAbortRef.current = controller;
 
     try {
-      const res  = await fetch('/api/transform', { method: 'POST', body: form });
+      const res  = await fetch('/api/transform', { method: 'POST', body: form, signal: controller.signal });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       if (data.error) throw new Error(data.error);
 
       const { transcript: t, audioBase64 } = data as { transcript: string; audioBase64: string };
       setTranscript(t);
+      lastTranscriptRef.current = t;
 
       const audio = audioRef.current!;
       audio.src = `data:audio/mpeg;base64,${audioBase64}`;
@@ -277,21 +311,59 @@ export default function MatchPage() {
       const ctx = ensureAudioContext();
       if (ctx.state === 'suspended') ctx.resume();
 
-      setRecordingState('playing');
-      setIsPlaying(true);
-      audio.play().catch(console.error);
+      try {
+        await audio.play();
+        setRecordingState('playing');
+        setIsPlaying(true);
+      } catch (playErr) {
+        console.error('[submitRecording] play failed', playErr);
+        setError('Audio playback failed. Tap play or record again.');
+        setRecordingState('idle');
+        setIsPlaying(false);
+        setTimeout(() => setError(null), 4000);
+      }
     } catch (err) {
+      if ((err as DOMException).name === 'AbortError') return;
       console.error('[submitRecording]', err);
       setError('Something went wrong. Try again.');
       setRecordingState('idle');
       setIsPlaying(false);
       setTimeout(() => setError(null), 4000);
+    } finally {
+      if (submitAbortRef.current === controller) {
+        submitAbortRef.current = null;
+      }
     }
   }, [ensureAudioContext]);
 
+  // Re-run the latest recording when the effective target voice changes.
+  // Guard with a key so this only fires once per persona/accent combination.
+  useEffect(() => {
+    if (!lastRecordingRef.current || !lastTranscriptRef.current) return;
+    if (recordingState === 'recording' || recordingState === 'processing') return;
+
+    const accentForPersona = selectedPersona.id === 'radio_host' ? ethnicity : 'American';
+    const autoKey = `${selectedPersona.id}::${accentForPersona}`;
+    if (lastAutoTransformKeyRef.current === autoKey) return;
+    lastAutoTransformKeyRef.current = autoKey;
+
+    setError(null);
+    setRecordingState('processing');
+    setIsPlaying(false);
+    void submitRecording(lastRecordingRef.current, selectedPersona.id, ethnicity, lastTranscriptRef.current);
+  }, [selectedPersona.id, ethnicity, recordingState, submitRecording]);
+
   // ── Mic button — two-press record/stop/submit flow ────────────────────────
   const handleMic = useCallback(async () => {
-    if (recordingState === 'processing' || recordingState === 'playing') return;
+    if (recordingState === 'processing') return;
+
+    // If playback is active, stop it and immediately start a fresh recording.
+    if (recordingState === 'playing' && audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.src = '';
+      setIsPlaying(false);
+      setRecordingState('idle');
+    }
 
     if (recordingState === 'recording') {
       // Second press: stop
@@ -301,11 +373,13 @@ export default function MatchPage() {
 
     // First press: start
     const personaIdForThisRecording = selectedPersona.id;
+    const ethnicityForThisRecording = ethnicity;
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
       setError(null);
       setTranscript(null);
+      lastTranscriptRef.current = null;
       if (audioRef.current) {
         audioRef.current.pause();
         audioRef.current.src = '';
@@ -343,8 +417,10 @@ export default function MatchPage() {
           return;
         }
 
+        lastRecordingRef.current = blob;
+        lastAutoTransformKeyRef.current = null;
         setRecordingState('processing');
-        submitRecording(blob, personaIdForThisRecording);
+        submitRecording(blob, personaIdForThisRecording, ethnicityForThisRecording);
       };
 
       recorder.start(100);
@@ -356,7 +432,13 @@ export default function MatchPage() {
       setError('Microphone access denied. Please allow mic access.');
       setTimeout(() => setError(null), 4000);
     }
-  }, [recordingState, ensureAudioContext, submitRecording, selectedPersona.id]);
+  }, [recordingState, ensureAudioContext, submitRecording, selectedPersona.id, ethnicity]);
+
+  // Abort pending submit if page unmounts
+  useEffect(() => () => {
+    submitAbortRef.current?.abort();
+    submitAbortRef.current = null;
+  }, []);
 
   // ── Upload handler ─────────────────────────────────────────────────────────
   const handleUpload = useCallback(() => {
@@ -475,24 +557,30 @@ export default function MatchPage() {
           {/* Ethnicity */}
           <div className="space-y-2">
             <label className="block text-[10px] font-medium tracking-[0.35em] text-white/40 uppercase">
-              Ethnicity
+              Accent
             </label>
-            <div className="flex flex-wrap gap-2">
-              {ETHNICITIES.map((opt) => (
-                <button
-                  key={opt}
-                  type="button"
-                  onClick={() => setEthnicity(opt)}
-                  className={`px-3 py-1.5 rounded-full text-xs font-medium tracking-wider uppercase transition-all duration-200 ${
-                    ethnicity === opt
-                      ? 'bg-white/15 border border-white/25 text-white'
-                      : 'bg-white/5 border border-white/10 text-white/50 hover:text-white/70 hover:border-white/15'
-                  }`}
-                >
-                  {opt}
-                </button>
-              ))}
-            </div>
+            {showRadioAccent ? (
+              <div className="flex flex-wrap gap-2">
+                {ETHNICITIES.map((opt) => (
+                  <button
+                    key={opt}
+                    type="button"
+                    onClick={() => setEthnicity(opt)}
+                    className={`px-3 py-1.5 rounded-full text-xs font-medium tracking-wider uppercase transition-all duration-200 ${
+                      ethnicity === opt
+                        ? 'bg-white/15 border border-white/25 text-white'
+                        : 'bg-white/5 border border-white/10 text-white/50 hover:text-white/70 hover:border-white/15'
+                    }`}
+                  >
+                    {opt}
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xs text-white/45 tracking-wide">
+                Accent controls are available for Radio Host.
+              </p>
+            )}
           </div>
 
           {/* Emotion */}
