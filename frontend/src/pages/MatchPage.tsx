@@ -72,12 +72,10 @@ export default function MatchPage() {
 
   const selectedPersona    = PERSONAS[personaIndex];
   const personaColorRef    = useRef(PERSONAS[0].color);
-  const selectedPersonaRef = useRef(PERSONAS[0]);
 
-  // Keep refs in sync so callbacks always read the latest persona without stale closures
+  // Keep color ref in sync for animation loop reads.
   useEffect(() => {
     personaColorRef.current   = selectedPersona.color;
-    selectedPersonaRef.current = selectedPersona;
   }, [selectedPersona]);
 
   // Reset state whenever the user switches persona
@@ -243,10 +241,10 @@ export default function MatchPage() {
   }, []);
 
   // ── Submit recording to backend ───────────────────────────────────────────
-  const submitRecording = useCallback(async (audioBlob: Blob) => {
+  const submitRecording = useCallback(async (audioBlob: Blob, personaId: string) => {
     const form = new FormData();
     form.append('audio', audioBlob, 'recording.webm');
-    form.append('personaId', selectedPersonaRef.current.id);
+    form.append('personaId', personaId);
 
     try {
       const res  = await fetch('/api/transform', { method: 'POST', body: form });
@@ -287,9 +285,16 @@ export default function MatchPage() {
     }
 
     // First press: start
+    const personaIdForThisRecording = selectedPersona.id;
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
+      setError(null);
+      setTranscript(null);
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.src = '';
+      }
 
       const ctx = ensureAudioContext();
       if (ctx.state === 'suspended') ctx.resume();
@@ -324,7 +329,7 @@ export default function MatchPage() {
         }
 
         setRecordingState('processing');
-        submitRecording(blob);
+        submitRecording(blob, personaIdForThisRecording);
       };
 
       recorder.start(100);
@@ -336,7 +341,7 @@ export default function MatchPage() {
       setError('Microphone access denied. Please allow mic access.');
       setTimeout(() => setError(null), 4000);
     }
-  }, [recordingState, ensureAudioContext, submitRecording]);
+  }, [recordingState, ensureAudioContext, submitRecording, selectedPersona.id]);
 
   // ── Upload handler ─────────────────────────────────────────────────────────
   const handleUpload = useCallback(() => {
