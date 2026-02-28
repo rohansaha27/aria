@@ -16,3 +16,79 @@ body {
 #root {
   min-height: 100vh;
 }
+
+/* Match page visualizer */
+.match-page {
+  --neon-primary: #00f2ff;
+  --neon-secondary: #7000ff;
+  --bg-deep: #050505;
+  font-family: 'Space Grotesk', sans-serif;
+}
+
+.match-page .tube {
+  position: absolute;
+  width: 1px;
+  height: 150vh;
+  background: linear-gradient(to bottom, transparent, var(--neon-primary), transparent);
+  opacity: 0.1;
+  filter: blur(1px) drop-shadow(0 0 10px var(--neon-primary));
+  animation: tube-float 20s linear infinite;
+}
+
+@keyframes tube-float {
+  0% { transform: translateY(-100%) rotateX(45deg); opacity: 0; }
+  20% { opacity: 0.2; }
+  80% { opacity: 0.2; }
+  100% { transform: translateY(100%) rotateX(45deg); opacity: 0; }
+}
+
+.match-page .grain {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  opacity: 0.02;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+}
+
+/* Fit visualizer + controls in one viewport: reserve ~28vh for controls, use rest for circle */
+.match-page .visualizer-wrapper {
+  width: min(72vmin, 65vh);
+  height: min(72vmin, 65vh);
+  max-width: min(700px, 90vw);
+  max-height: 100%;
+}
+
+.match-page .visualizer-core {
+  width: 71.43%;
+  height: 71.43%;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(0,242,255,0.05) 0%, transparent 80%);
+  border: 1px solid rgba(0, 242, 255, 0.2);
+  box-shadow: 0 0 60px rgba(0, 242, 255, 0.1), inset 0 0 30px rgba(0, 242, 255, 0.05);
+  z-index: 10;
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.match-page .spike-svg {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  z-index: 5;
+  transform: rotate(-90deg);
+}
+
+.match-page .progress-bar-glow {
+  box-shadow: 0 0 15px rgba(0, 242, 255, 0.3);
+}
+
+.match-page .nav-btn {
+  transition: all 0.3s ease;
+  opacity: 0.5;
+}
+
+.match-page .nav-btn:hover {
+  opacity: 1;
+  transform: translateY(-1px);
+  color: var(--neon-primary);
+}
