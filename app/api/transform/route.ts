@@ -3,6 +3,7 @@ import { PERSONAS } from "@/lib/personas";
 import type { AccentId, FinalVoiceSettings } from "@/lib/personas";
 import { transcribeAudio } from "@/lib/gemini";
 import { synthesizeSpeech } from "@/lib/elevenlabs";
+import { rewriteForPersona } from "@/lib/featherless";
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max);
@@ -99,10 +100,13 @@ export async function POST(request: NextRequest) {
   }
 
   console.log(`[transform] transcript="${transcript.slice(0, 80)}"`);
+  const rewrittenTranscript = await rewriteForPersona(transcript, persona);
+  console.log(`[featherless] original: "${transcript.slice(0, 60)}"`);
+  console.log(`[featherless] rewritten: "${rewrittenTranscript.slice(0, 60)}"`);
 
   let ttsBuffer: Buffer;
   try {
-    ttsBuffer = await synthesizeSpeech(transcript, voiceId, finalSettings);
+    ttsBuffer = await synthesizeSpeech(rewrittenTranscript, voiceId, finalSettings);
   } catch (err) {
     console.error("[transform] ElevenLabs synthesis failed:", err);
     // Return transcript even if audio fails — frontend shows "Something went wrong"
@@ -111,6 +115,7 @@ export async function POST(request: NextRequest) {
 
   return NextResponse.json({
     transcript,
+    rewrittenTranscript,
     personaId,
     audioBase64: ttsBuffer.toString("base64"),
   });
