@@ -90,7 +90,7 @@ body {
 .match-page .nav-btn:hover {
   opacity: 1;
   transform: translateY(-1px);
-  color: var(--neon-primary);
+  color: var(--persona-color, var(--neon-primary));
 }
 
 /* Processing: slow breathing pulse on the visualizer core */

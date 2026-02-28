@@ -8,15 +8,26 @@ const SPIKE_RADIUS = 25.5;
 const FFT_SIZE = 256;
 const SPIKES_MAX_LENGTH = 8;
 
-const PERSONAS = [
-  { id: 'calm_narrator',     name: 'Calm Narrator',     description: 'Calm · Middle-aged · Neutral accent', color: '#3949ab' },
-  { id: 'radio_host',        name: 'Radio Host',         description: 'Energetic · Young · Broadcast',       color: '#e53935' },
-  { id: 'elder_storyteller', name: 'Elder Storyteller',  description: 'Warm · Elderly · Storytelling',       color: '#8e24aa' },
-  { id: 'playful_kid',       name: 'Playful Kid',        description: 'Bright · Youthful · Playful energy',  color: '#00897b' },
+type Ethnicity = 'Indian' | 'British' | 'Australian' | 'American';
+type Emotion = 'happy' | 'angry' | 'sad';
+
+const PERSONAS: Array<{
+  id: string;
+  name: string;
+  description: string;
+  color: string;
+  defaultAge: number;
+  defaultEthnicity: Ethnicity;
+  defaultEmotion: Emotion;
+}> = [
+  { id: 'calm_narrator',     name: 'Calm Narrator',     description: 'Calm · Middle-aged · Neutral accent', color: '#3949ab', defaultAge: 42, defaultEthnicity: 'American', defaultEmotion: 'happy' },
+  { id: 'radio_host',        name: 'Radio Host',        description: 'Energetic · Young · Broadcast',       color: '#e53935', defaultAge: 28, defaultEthnicity: 'American', defaultEmotion: 'happy' },
+  { id: 'elder_storyteller', name: 'Elder Storyteller', description: 'Warm · Elderly · Storytelling',       color: '#8e24aa', defaultAge: 68, defaultEthnicity: 'British',  defaultEmotion: 'happy' },
+  { id: 'playful_kid',       name: 'Playful Kid',       description: 'Bright · Youthful · Playful energy', color: '#00897b', defaultAge: 10, defaultEthnicity: 'American', defaultEmotion: 'happy' },
 ];
 
-const ETHNICITIES = ['Indian', 'British', 'Australian',] as const;
-const EMOTIONS = ['happy', 'angry', 'sad'] as const;
+const ETHNICITIES: readonly Ethnicity[] = ['Indian', 'British', 'Australian', 'American'];
+const EMOTIONS: readonly Emotion[] = ['happy', 'angry', 'sad'];
 const AGE_MIN = 5;
 const AGE_MAX = 50;
 
@@ -63,9 +74,9 @@ export default function MatchPage() {
   const [isPlaying,      setIsPlaying]      = useState(false);
   const [totalTime,      setTotalTime]      = useState('--:--');
   const [personaIndex,   setPersonaIndex]   = useState(0);
-  const [age,            setAge]            = useState(25);
-  const [ethnicity,      setEthnicity]      = useState<(typeof ETHNICITIES)[number]>('American');
-  const [emotion,        setEmotion]        = useState<(typeof EMOTIONS)[number]>('happy');
+  const [age,            setAge]            = useState(PERSONAS[0].defaultAge);
+  const [ethnicity,      setEthnicity]      = useState<Ethnicity>(PERSONAS[0].defaultEthnicity);
+  const [emotion,        setEmotion]        = useState<Emotion>(PERSONAS[0].defaultEmotion);
   const [recordingState, setRecordingState] = useState<RecordingState>('idle');
   const [transcript,     setTranscript]     = useState<string | null>(null);
   const [error,          setError]          = useState<string | null>(null);
@@ -80,8 +91,12 @@ export default function MatchPage() {
     selectedPersonaRef.current = selectedPersona;
   }, [selectedPersona]);
 
-  // Reset state whenever the user switches persona
+  // When persona changes: reset playback state and sync sliders to this persona's defaults
   useEffect(() => {
+    const p = PERSONAS[personaIndex];
+    setAge(p.defaultAge);
+    setEthnicity(p.defaultEthnicity);
+    setEmotion(p.defaultEmotion);
     setTranscript(null);
     setRecordingState('idle');
     setIsPlaying(false);
@@ -384,8 +399,13 @@ export default function MatchPage() {
   };
 
   // ─── Render ───────────────────────────────────────────────────────────────
+  const personaColor = selectedPersona.color;
+
   return (
-    <div className="match-page h-screen bg-[#050505] relative flex flex-col items-center overflow-hidden text-white">
+    <div
+      className="match-page h-screen bg-[#050505] relative flex flex-col items-center overflow-hidden text-white"
+      style={{ ['--persona-color' as string]: personaColor }}
+    >
       <audio ref={audioRef} className="hidden" />
 
       {/* Ambient tubes */}
@@ -424,7 +444,10 @@ export default function MatchPage() {
 
       {/* Age / Ethnicity / Emotion — top right */}
       <section className="absolute top-4 right-4 sm:top-6 sm:right-6 z-20 w-[min(100vw-2rem,320px)] pointer-events-auto">
-        <div className="space-y-4 rounded-xl bg-white/[0.03] border border-white/10 backdrop-blur-sm px-4 py-4 sm:px-5 sm:py-4">
+        <div
+          className="space-y-4 rounded-xl bg-white/[0.03] border border-white/10 backdrop-blur-sm px-4 py-4 sm:px-5 sm:py-4 transition-colors duration-300"
+          style={{ borderLeftColor: personaColor, borderLeftWidth: '3px', boxShadow: `0 0 20px ${personaColor}18` }}
+        >
           {/* Age slider */}
           <div className="space-y-2">
             <div className="flex justify-between items-baseline">
@@ -507,7 +530,7 @@ export default function MatchPage() {
                     if (el) spikesRef.current[i] = { angle: s.angle, x1: s.x1, y1: s.y1, element: el };
                   }}
                   x1={s.x1} y1={s.y1} x2={s.x1} y2={s.y1}
-                  stroke="var(--neon-primary)"
+                  stroke={personaColor}
                   strokeWidth="0.3"
                   strokeLinecap="round"
                   style={{ opacity: 0.3, transition: 'all 0.15s cubic-bezier(0.4,0,0.2,1)' }}
@@ -533,7 +556,8 @@ export default function MatchPage() {
             <div className="relative w-full h-[1px] bg-white/10">
               <div
                 ref={progressBarRef}
-                className="absolute top-0 left-0 h-full w-0 bg-cyan-400 progress-bar-glow transition-all duration-300"
+                className="absolute top-0 left-0 h-full w-0 transition-all duration-300"
+                style={{ backgroundColor: personaColor, boxShadow: `0 0 12px ${personaColor}60` }}
               />
             </div>
             <div className="flex justify-between text-[clamp(0.5rem,2vmin,0.625rem)] tracking-[0.4em] font-medium text-white/30 uppercase">
@@ -586,12 +610,13 @@ export default function MatchPage() {
                 type="button"
                 id="btn-play-toggle"
                 onClick={handlePlayToggle}
-                className="w-[min(18vw,6rem)] h-[min(18vw,6rem)] min-w-[3.5rem] min-h-[3.5rem] rounded-full glass-panel flex items-center justify-center text-cyan-400 hover:scale-105 active:scale-95 transition-all shadow-[0_0_40px_rgba(0,242,255,0.1)] group bg-white/5 backdrop-blur-[40px] border border-white/5"
+                className="w-[min(18vw,6rem)] h-[min(18vw,6rem)] min-w-[3.5rem] min-h-[3.5rem] rounded-full glass-panel flex items-center justify-center hover:scale-105 active:scale-95 transition-all duration-300 group bg-white/5 backdrop-blur-[40px] border border-white/5"
+                style={{ color: personaColor, boxShadow: `0 0 40px ${personaColor}20` }}
                 aria-label={isPlaying ? 'Pause' : 'Play'}
               >
                 {isPlaying
-                  ? <Pause className="w-[clamp(2rem,8vmin,2.5rem)] h-[clamp(2rem,8vmin,2.5rem)] group-hover:drop-shadow-[0_0_10px_rgba(0,242,255,0.8)]" />
-                  : <Play  className="w-[clamp(2rem,8vmin,2.5rem)] h-[clamp(2rem,8vmin,2.5rem)] ml-0.5 group-hover:drop-shadow-[0_0_10px_rgba(0,242,255,0.8)]" />
+                  ? <Pause className="w-[clamp(2rem,8vmin,2.5rem)] h-[clamp(2rem,8vmin,2.5rem)]" style={{ filter: `drop-shadow(0 0 10px ${personaColor}cc)` }} />
+                  : <Play  className="w-[clamp(2rem,8vmin,2.5rem)] h-[clamp(2rem,8vmin,2.5rem)] ml-0.5" style={{ filter: `drop-shadow(0 0 10px ${personaColor}cc)` }} />
                 }
               </button>
 
