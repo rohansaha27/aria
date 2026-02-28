@@ -57,12 +57,24 @@ export async function POST(request: NextRequest) {
   const overrideStability = parseOverrideField(formData, "stability", 0, 1);
   const overrideSpeakingRate = parseOverrideField(formData, "speakingRate", 0.7, 1.3);
 
-  const finalSettings: FinalVoiceSettings = {
+  let finalSettings: FinalVoiceSettings = {
     stability: overrideStability ?? persona.stability,
     similarityBoost: persona.similarityBoost,
     style: overrideStyle ?? persona.style,
     speakingRate: overrideSpeakingRate ?? persona.speakingRate,
   };
+
+  // The American Radio Host voice can sound overly "tweaky" with aggressive style/speed.
+  // Apply a conservative clamp for this one profile to keep output natural and stable.
+  if (personaId === "radio_host" && accent === "american") {
+    finalSettings = {
+      ...finalSettings,
+      stability: Math.max(finalSettings.stability, 0.62),
+      style: Math.min(finalSettings.style, 0.15),
+      speakingRate: Math.min(finalSettings.speakingRate ?? 1, 1.0),
+    };
+    console.log("[transform] applied american radio_host smoothing");
+  }
 
   let transcript: string;
   if (transcriptOverride) {
