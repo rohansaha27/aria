@@ -64,9 +64,24 @@ export default function MatchPage() {
 
   const selectedPersona    = PERSONAS[personaIndex];
   const personaColorRef    = useRef(PERSONAS[0].color);
+  const selectedPersonaRef = useRef(PERSONAS[0]);
 
-  // Keep color ref in sync so the animation loop always has the latest value
-  useEffect(() => { personaColorRef.current = selectedPersona.color; }, [selectedPersona.color]);
+  // Keep refs in sync so callbacks always read the latest persona without stale closures
+  useEffect(() => {
+    personaColorRef.current   = selectedPersona.color;
+    selectedPersonaRef.current = selectedPersona;
+  }, [selectedPersona]);
+
+  // Reset state whenever the user switches persona
+  useEffect(() => {
+    setTranscript(null);
+    setRecordingState('idle');
+    setIsPlaying(false);
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.src = '';
+    }
+  }, [personaIndex]);
 
   // ── Geometry ──────────────────────────────────────────────────────────────
   const tubeConfigs = useMemo<TubeConfig[]>(() => (
@@ -215,7 +230,7 @@ export default function MatchPage() {
   const submitRecording = useCallback(async (audioBlob: Blob) => {
     const form = new FormData();
     form.append('audio', audioBlob, 'recording.webm');
-    form.append('personaId', selectedPersona.id);
+    form.append('personaId', selectedPersonaRef.current.id);
 
     try {
       const res  = await fetch('/api/transform', { method: 'POST', body: form });
@@ -251,7 +266,7 @@ export default function MatchPage() {
       setIsPlaying(false);
       setTimeout(() => setError(null), 4000);
     }
-  }, [selectedPersona.id, ensureAudioContext]);
+  }, [ensureAudioContext]);
 
   // ── Mic button — two-press record/stop/submit flow ────────────────────────
   const handleMic = useCallback(async () => {
