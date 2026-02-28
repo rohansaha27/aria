@@ -1,15 +1,20 @@
 # Dependencies
 node_modules/
+/.pnp
+.pnp.js
+.yarn/install-state.gz
 
 # Build output
 dist/
 build/
-*.local
+/.next/
+/out/
 
 # Environment
 .env
 .env.local
 .env.*.local
+!.env.example
 
 # Logs
 logs/
@@ -28,11 +33,9 @@ Thumbs.db
 .vscode/
 *.sublime-*
 
-# Vite
-*.local
-
 # TypeScript
 *.tsbuildinfo
+next-env.d.ts
 
 # Testing
 coverage/
@@ -43,3 +46,4 @@ coverage/
 *.pid
 *.seed
 *.pid.lock
+.vercel
