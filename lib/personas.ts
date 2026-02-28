@@ -7,7 +7,23 @@ export interface Persona {
   similarityBoost: number;
   style: number;
   speakingRate?: number;
+  accentVoices?: Partial<Record<AccentId, string>>;
 }
+
+export type VoiceOverrides = {
+  style?: number;        // 0–1
+  stability?: number;    // 0–1
+  speakingRate?: number; // 0.7–1.3
+}
+
+export type FinalVoiceSettings = {
+  stability: number;
+  similarityBoost: number;
+  style: number;
+  speakingRate?: number;
+}
+
+export type AccentId = "american" | "british" | "australian" | "indian"
 
 export const PERSONAS: Record<string, Persona> = {
   calm_narrator: {
@@ -28,6 +44,12 @@ export const PERSONAS: Record<string, Persona> = {
     similarityBoost: 0.75,
     style: 0.45,
     speakingRate: 1.15,
+    accentVoices: {
+      american:   "OQZFQwxzrAUxV46LjHx1", // existing voice
+      british:    "Om2UWRzFN17pcwpGqlL7",
+      australian: "gmBpaV0BNpfT1EqjI4Dx",
+      indian:     "9yJ9vg0nUgNIvv7y2uhu",
+    },
   },
   elder_storyteller: {
     id: "elder_storyteller",

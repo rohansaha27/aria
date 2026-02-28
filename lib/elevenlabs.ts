@@ -1,5 +1,5 @@
 import { ElevenLabsClient } from "@elevenlabs/elevenlabs-js";
-import type { Persona } from "./personas";
+import type { FinalVoiceSettings } from "./personas";
 
 const client = new ElevenLabsClient({
   apiKey: process.env.ELEVENLABS_API_KEY!,
@@ -7,17 +7,18 @@ const client = new ElevenLabsClient({
 
 export async function synthesizeSpeech(
   text: string,
-  persona: Persona
+  voiceId: string,
+  settings: FinalVoiceSettings
 ): Promise<Buffer> {
-  const stream = await client.textToSpeech.convert(persona.elevenVoiceId, {
+  const stream = await client.textToSpeech.convert(voiceId, {
     text,
     modelId: "eleven_multilingual_v2",
     outputFormat: "mp3_44100_128",
     voiceSettings: {
-      stability: persona.stability,
-      similarityBoost: persona.similarityBoost,
-      style: persona.style,
-      speed: persona.speakingRate,
+      stability: settings.stability,
+      similarityBoost: settings.similarityBoost,
+      style: settings.style,
+      speed: settings.speakingRate,
     },
   });
 
