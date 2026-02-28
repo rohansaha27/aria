@@ -15,6 +15,11 @@ const PERSONAS = [
   { id: 'playful_kid',       name: 'Playful Kid',        description: 'Bright · Youthful · Playful energy',  color: '#00897b' },
 ];
 
+const ETHNICITIES = ['Indian', 'British', 'Australian',] as const;
+const EMOTIONS = ['happy', 'angry', 'sad'] as const;
+const AGE_MIN = 5;
+const AGE_MAX = 50;
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface TubeConfig  { left: number; duration: number; delay: number; rotation: number; }
 interface SpikeData   { angle: number; x1: number; y1: number; }
@@ -58,6 +63,9 @@ export default function MatchPage() {
   const [isPlaying,      setIsPlaying]      = useState(false);
   const [totalTime,      setTotalTime]      = useState('--:--');
   const [personaIndex,   setPersonaIndex]   = useState(0);
+  const [age,            setAge]            = useState(25);
+  const [ethnicity,      setEthnicity]      = useState<(typeof ETHNICITIES)[number]>('American');
+  const [emotion,        setEmotion]        = useState<(typeof EMOTIONS)[number]>('happy');
   const [recordingState, setRecordingState] = useState<RecordingState>('idle');
   const [transcript,     setTranscript]     = useState<string | null>(null);
   const [error,          setError]          = useState<string | null>(null);
@@ -413,6 +421,76 @@ export default function MatchPage() {
           {selectedPersona.description}
         </p>
       </div>
+
+      {/* Age / Ethnicity / Emotion — top right */}
+      <section className="absolute top-4 right-4 sm:top-6 sm:right-6 z-20 w-[min(100vw-2rem,320px)] pointer-events-auto">
+        <div className="space-y-4 rounded-xl bg-white/[0.03] border border-white/10 backdrop-blur-sm px-4 py-4 sm:px-5 sm:py-4">
+          {/* Age slider */}
+          <div className="space-y-2">
+            <div className="flex justify-between items-baseline">
+              <label className="text-[10px] font-medium tracking-[0.35em] text-white/40 uppercase">
+                Age
+              </label>
+              <span className="text-xs tabular-nums text-white/60 tracking-wide">{age}</span>
+            </div>
+            <input
+              type="range"
+              min={AGE_MIN}
+              max={AGE_MAX}
+              value={age}
+              onChange={(e) => setAge(Number(e.target.value))}
+              className="match-slider w-full h-1.5 appearance-none rounded-full bg-white/10 accent-white/50 focus:outline-none"
+              aria-label="Age"
+            />
+          </div>
+
+          {/* Ethnicity */}
+          <div className="space-y-2">
+            <label className="block text-[10px] font-medium tracking-[0.35em] text-white/40 uppercase">
+              Ethnicity
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {ETHNICITIES.map((opt) => (
+                <button
+                  key={opt}
+                  type="button"
+                  onClick={() => setEthnicity(opt)}
+                  className={`px-3 py-1.5 rounded-full text-xs font-medium tracking-wider uppercase transition-all duration-200 ${
+                    ethnicity === opt
+                      ? 'bg-white/15 border border-white/25 text-white'
+                      : 'bg-white/5 border border-white/10 text-white/50 hover:text-white/70 hover:border-white/15'
+                  }`}
+                >
+                  {opt}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Emotion */}
+          <div className="space-y-2">
+            <label className="block text-[10px] font-medium tracking-[0.35em] text-white/40 uppercase">
+              Emotion
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {EMOTIONS.map((opt) => (
+                <button
+                  key={opt}
+                  type="button"
+                  onClick={() => setEmotion(opt)}
+                  className={`px-3 py-1.5 rounded-full text-xs font-medium tracking-wider uppercase transition-all duration-200 ${
+                    emotion === opt
+                      ? 'bg-white/15 border border-white/25 text-white'
+                      : 'bg-white/5 border border-white/10 text-white/50 hover:text-white/70 hover:border-white/15'
+                  }`}
+                >
+                  {opt.charAt(0).toUpperCase() + opt.slice(1)}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
 
       {/* Main visualizer */}
       <main className="flex-1 min-h-0 flex flex-col items-center justify-center w-full z-10 p-[min(4vw,1rem)] sm:p-[min(4vw,1.5rem)]">
