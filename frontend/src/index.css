@@ -92,3 +92,25 @@ body {
   transform: translateY(-1px);
   color: var(--neon-primary);
 }
+
+/* Processing: slow breathing pulse on the visualizer core */
+@keyframes core-breathe {
+  0%, 100% { transform: scale(1);    opacity: 0.6; }
+  50%       { transform: scale(1.08); opacity: 1;   }
+}
+
+.match-page .core-breathing {
+  animation: core-breathe 2s ease-in-out infinite;
+}
+
+/* Recording: red ripple ring around the mic button */
+@keyframes recording-ring {
+  0%   { box-shadow: 0 0 0 0   rgba(239, 68, 68, 0.5); }
+  70%  { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0);   }
+  100% { box-shadow: 0 0 0 0   rgba(239, 68, 68, 0);   }
+}
+
+.match-page .recording-pulse {
+  animation: recording-ring 1.2s ease-out infinite;
+  border-radius: 50%;
+}
