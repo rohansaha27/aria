@@ -1,5 +1,6 @@
 import { useRef, useEffect, useMemo, useState, useCallback } from 'react';
-import { Upload, Mic, ChevronLeft, ChevronRight, Play, Pause } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Upload, Mic, ChevronLeft, ChevronRight, Play, Pause, ArrowLeft } from 'lucide-react';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const TUBE_COUNT = 15;
@@ -493,6 +494,16 @@ export default function MatchPage() {
       style={{ ['--persona-color' as string]: personaColor }}
     >
       <audio ref={audioRef} className="hidden" />
+
+      {/* Back to landing */}
+      <Link
+        to="/"
+        className="absolute top-4 left-4 sm:top-6 sm:left-6 z-20 flex items-center gap-2 px-3 py-2 rounded-full bg-white/[0.06] border border-white/10 hover:bg-white/10 hover:border-white/20 text-white/60 hover:text-white transition-all duration-200 pointer-events-auto no-underline text-xs font-medium tracking-wider uppercase"
+        aria-label="Back to home"
+      >
+        <ArrowLeft className="w-4 h-4" />
+        Back
+      </Link>
 
       {/* Ambient tubes */}
       <div
