@@ -1,5 +1,7 @@
+'use client';
+
 import { useRef, useEffect, useMemo, useState, useCallback } from 'react';
-import { Link } from 'react-router-dom';
+import Link from 'next/link';
 import { Upload, Mic, ChevronLeft, ChevronRight, Play, Pause, ArrowLeft } from 'lucide-react';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -33,6 +35,8 @@ const EMOTIONS: readonly Emotion[] = ['happy', 'angry', 'sad'];
 const AGE_MIN = 5;
 const AGE_MAX = 50;
 
+const API_BASE = (process.env.NEXT_PUBLIC_API_URL ?? '').replace(/\/$/, '');
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface TubeConfig  { left: number; duration: number; delay: number; rotation: number; }
 interface SpikeData   { angle: number; x1: number; y1: number; }
@@ -45,6 +49,28 @@ function hexToRgb(hex: string): [number, number, number] {
     parseInt(hex.slice(3, 5), 16),
     parseInt(hex.slice(5, 7), 16),
   ];
+}
+
+// Deterministic tube configs for SSR/initial client (avoids hydration mismatch from Math.random).
+function getFixedTubeConfigs(): TubeConfig[] {
+  return Array.from({ length: TUBE_COUNT }, (_, i) => {
+    const t = (i * 0.618033989) % 1; // deterministic spread
+    return {
+      left: t * 100,
+      duration: 15 + t * 25,
+      delay: -t * 40,
+      rotation: -20 + t * 40,
+    };
+  });
+}
+
+function getRandomTubeConfigs(): TubeConfig[] {
+  return Array.from({ length: TUBE_COUNT }, () => ({
+    left: Math.random() * 100,
+    duration: 15 + Math.random() * 25,
+    delay: Math.random() * -40,
+    rotation: -20 + Math.random() * 40,
+  }));
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -126,21 +152,24 @@ export default function MatchPage() {
   }, [personaIndex]);
 
   // ── Geometry ──────────────────────────────────────────────────────────────
-  const tubeConfigs = useMemo<TubeConfig[]>(() => (
-    Array.from({ length: TUBE_COUNT }, () => ({
-      left:     Math.random() * 100,
-      duration: 15 + Math.random() * 25,
-      delay:    Math.random() * -40,
-      rotation: -20 + Math.random() * 40,
-    }))
-  ), []);
+  // Use fixed configs for initial render (SSR + first client) to avoid hydration mismatch, then random after mount.
+  const [tubeConfigs, setTubeConfigs] = useState<TubeConfig[]>(getFixedTubeConfigs);
+  useEffect(() => {
+    setTubeConfigs(getRandomTubeConfigs());
+  }, []);
 
-  const spikeData = useMemo<SpikeData[]>(() => (
-    Array.from({ length: SPIKE_COUNT }, (_, i) => {
+  // Round to 4 decimals so server and client serialize identically (avoids float hydration mismatch).
+  const spikeData = useMemo<SpikeData[]>(() => {
+    const round = (n: number) => Math.round(n * 1e4) / 1e4;
+    return Array.from({ length: SPIKE_COUNT }, (_, i) => {
       const angle = (i / SPIKE_COUNT) * Math.PI * 2;
-      return { angle, x1: 50 + Math.cos(angle) * SPIKE_RADIUS, y1: 50 + Math.sin(angle) * SPIKE_RADIUS };
-    })
-  ), []);
+      return {
+        angle,
+        x1: round(50 + Math.cos(angle) * SPIKE_RADIUS),
+        y1: round(50 + Math.sin(angle) * SPIKE_RADIUS),
+      };
+    });
+  }, []);
 
   // ── Audio context ─────────────────────────────────────────────────────────
   const ensureAudioContext = useCallback(() => {
@@ -179,8 +208,8 @@ export default function MatchPage() {
       const hasAnalyser = analyser && frequencyData && timeDomainData;
 
       if (isPlaying && hasAnalyser && core && progressBar) {
-        analyser.getByteFrequencyData(frequencyData as unknown as Uint8Array);
-        analyser.getByteTimeDomainData(timeDomainData as unknown as Uint8Array);
+        analyser.getByteFrequencyData(frequencyData as Uint8Array<ArrayBuffer>);
+        analyser.getByteTimeDomainData(timeDomainData as Uint8Array<ArrayBuffer>);
 
         const binCount = frequencyData.length;
         const timeLen  = timeDomainData.length;
@@ -296,7 +325,7 @@ export default function MatchPage() {
     submitAbortRef.current = controller;
 
     try {
-      const res  = await fetch('/api/transform', { method: 'POST', body: form, signal: controller.signal });
+      const res  = await fetch(`${API_BASE}/api/transform`, { method: 'POST', body: form, signal: controller.signal });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       if (data.error) throw new Error(data.error);
@@ -497,7 +526,7 @@ export default function MatchPage() {
 
       {/* Back to landing */}
       <Link
-        to="/"
+        href="/"
         className="absolute top-4 left-4 sm:top-6 sm:left-6 z-20 flex items-center gap-2 px-3 py-2 rounded-full bg-white/[0.06] border border-white/10 hover:bg-white/10 hover:border-white/20 text-white/60 hover:text-white transition-all duration-200 pointer-events-auto no-underline text-xs font-medium tracking-wider uppercase"
         aria-label="Back to home"
       >

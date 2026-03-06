@@ -1,3 +1,5 @@
+'use client';
+
 import React, { useEffect, useRef, useState } from 'react';
 import { cn } from '@/utils/cn';
 
@@ -11,7 +13,6 @@ export interface TubesBackgroundProps {
   children?: React.ReactNode;
   className?: string;
   enableClickInteraction?: boolean;
-  /** Called with current tube colors when they change (init or after click randomize). Use for UI that should match tube colour, e.g. button glow. */
   onTubeColorsChange?: (tubeColors: string[]) => void;
 }
 
@@ -37,10 +38,9 @@ export function TubesBackground({
       if (!canvasRef.current) return;
 
       try {
-        const module = await import(
-          // @ts-expect-error - CDN URL not in TS module resolution
-          'https://cdn.jsdelivr.net/npm/threejs-components@0.0.19/build/cursors/tubes1.min.js'
-        );
+        const scriptUrl =
+          'https://cdn.jsdelivr.net/npm/threejs-components@0.0.19/build/cursors/tubes1.min.js';
+        const module = await import(/* webpackIgnore: true */ scriptUrl);
         const TubesCursor = (module as { default: (el: HTMLCanvasElement, opts: object) => unknown }).default;
 
         if (!mounted) return;
@@ -60,27 +60,20 @@ export function TubesBackground({
         setIsLoaded(true);
         onTubeColorsChange?.(initialColors);
 
-        const handleResize = () => {
-          // Library may handle resize; placeholder for custom logic
-        };
-
+        const handleResize = () => {};
         window.addEventListener('resize', handleResize);
-
-        cleanup = () => {
-          window.removeEventListener('resize', handleResize);
-        };
+        cleanup = () => window.removeEventListener('resize', handleResize);
       } catch (error) {
         console.error('Failed to load TubesCursor:', error);
       }
     };
 
     initTubes();
-
     return () => {
       mounted = false;
       cleanup?.();
     };
-  }, []);
+  }, [onTubeColorsChange]);
 
   const handleClick = () => {
     if (!enableClickInteraction || !tubesRef.current) return;
